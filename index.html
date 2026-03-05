@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>도시 침수 분석 결과 시각화 v2</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --bg-glass: rgba(255, 255, 255, 0.85);
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Pretendard', sans-serif;
+        }
+
+        body,
+        html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 360px;
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .slider-wrap {
+            position: relative;
+            padding: 10px 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--primary);
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .legend {
+            background: rgba(240, 240, 240, 0.5);
+            padding: 12px;
+            border-radius: 10px;
+        }
+
+        .legend-bar {
+            height: 12px;
+            background: linear-gradient(to right, #add8e6, #4a90e2, #0047ab);
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .legend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #444;
+        }
+
+        .layer-toggles {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .toggle-btn {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .info-box {
+            font-size: 12px;
+            color: #777;
+            line-height: 1.6;
+            background: white;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <div class="ui-panel">
+        <div class="header">
+            <h1>도시 침수 분석 v2</h1>
+            <div class="control-group" style="margin-top: 10px;">
+                <label class="control-label" for="basinSelect">수문 영역 선택</label>
+                <select id="basinSelect" class="selector-input"
+                    style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px;">
+                    <option value="4120003910" selected>수문영역 4120003910</option>
+                    <option value="4120003930">수문영역 4120003930</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="control-label">
+                <span>예상 시간 (Hour)</span>
+                <span id="hourValue">01</span>
+            </div>
+            <div class="slider-wrap">
+                <input type="range" id="hourSlider" min="1" max="48" value="1">
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="control-label" style="margin-bottom: 8px;">침수심 (m)</div>
+            <div class="legend-bar"></div>
+            <div class="legend-labels">
+                <span>0.3m</span>
+                <span>2.5m</span>
+                <span>5.0m+</span>
+            </div>
+        </div>
+
+        <div class="layer-toggles">
+            <div id="btn-basin" class="toggle-btn active">유역 경계</div>
+            <div id="btn-flood" class="toggle-btn active">침수 래스터</div>
+        </div>
+
+        <div class="info-box">
+            <b>설정 정보</b><br>
+            - 원본 GeoTIFF 직접 로드 (georaster)<br>
+            - 배경지도: ESRI Satellite<br>
+            - 좌표계: EPSG:5186 (Auto-Transform)
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay">
+        <span>래스터 읽는 중...</span>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/proj4"></script>
+    <script src="https://unpkg.com/georaster"></script>
+    <script src="https://unpkg.com/georaster-layer-for-leaflet@3.10.0/dist/georaster-layer-for-leaflet.min.js"></script>
+
+    <script src="js/app.js"></script>
+</body>
+
+</html>
