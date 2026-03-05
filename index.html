@@ -184,12 +184,26 @@
         <div class="header">
             <h1>도시 침수 분석 v2</h1>
             <div class="control-group" style="margin-top: 10px;">
-                <label class="control-label" for="basinSelect">수문 영역 선택</label>
-                <select id="basinSelect" class="selector-input"
-                    style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px;">
-                    <option value="4120003910" selected>수문영역 4120003910</option>
-                    <option value="4120003930">수문영역 4120003930</option>
-                </select>
+                <div style="display: flex; gap: 8px;">
+                    <div style="flex: 1;">
+                        <label class="control-label" for="regionSelect">지역</label>
+                        <select id="regionSelect" class="selector-input"
+                            style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px;">
+                            <option value="부산" selected>부산</option>
+                            <option value="울산">울산</option>
+                            <option value="진주">진주</option>
+                            <option value="서울">서울</option>
+                            <option value="안양">안양</option>
+                        </select>
+                    </div>
+                    <div style="flex: 2;">
+                        <label class="control-label" for="basinSelect">유역 ID</label>
+                        <select id="basinSelect" class="selector-input"
+                            style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px;">
+                            <!-- Dynamic Load -->
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 

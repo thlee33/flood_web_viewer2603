@@ -1,5 +1,13 @@
-// Register EPSG:5186 (Korea 2000 / Central Belt 2010)
+// Register EPSG:5186
 proj4.defs("EPSG:5186", "+proj=tmerc +lat_0=38 +lon_0=127 +k=1 +x_0=200000 +y_0=600000 +ellps=GRS80 +units=m +no_defs");
+
+const basinData = {
+    "부산": ["4120003910", "4120003930"],
+    "울산": ["4120596810", "4120596690", "4120003870", "4120003880"],
+    "진주": ["4120609720", "4120609790", "4120609360", "4120608250", "4120609240"],
+    "서울": ["4120533490", "4120533590", "4120533030", "4120532870", "4120532720", "4120005050", "4120532860", "4120005040", "4120005060"],
+    "안양": ["4121343840"]
+};
 
 const config = {
     selectedBasin: '4120003910',
@@ -12,15 +20,27 @@ const config = {
     }
 };
 
-// Initialize Map
-const map = L.map('map').setView([35.158, 129.070], 11);
+const map = L.map('map').setView([37.5665, 126.9780], 11);
 
-// Base Map (ESRI Satellite)
 const esriSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EBP, and the GIS User Community'
 }).addTo(map);
 
-// Function to load Basin GeoJSON
+function updateBasinList(region) {
+    const basinSelect = document.getElementById('basinSelect');
+    basinSelect.innerHTML = '';
+
+    basinData[region].forEach((bid, index) => {
+        const option = document.createElement('option');
+        option.value = bid;
+        option.text = bid;
+        if (index === 0 && config.selectedBasin !== bid) {
+            // Keep default if first load, else set to first of new region
+        }
+        basinSelect.appendChild(option);
+    });
+}
+
 function loadBasin(basinId) {
     if (config.layers.basin) {
         map.removeLayer(config.layers.basin);
@@ -38,7 +58,6 @@ function loadBasin(basinId) {
                 }
             }).addTo(map);
 
-            // Auto-zoom to basin on load
             if (config.layers.basin.getBounds().isValid()) {
                 map.fitBounds(config.layers.basin.getBounds(), { padding: [50, 50] });
             }
@@ -46,14 +65,11 @@ function loadBasin(basinId) {
         .catch(err => console.error(`Error loading basin ${basinId}:`, err));
 }
 
-// Function to update flood layer
 async function updateFloodLayer() {
     const basinId = config.selectedBasin;
     const hour = config.currentHour;
 
-    // Check if flood display is active
-    const floodBtn = document.getElementById('btn-flood');
-    if (!floodBtn.classList.contains('active')) return;
+    if (!document.getElementById('btn-flood').classList.contains('active')) return;
 
     const loading = document.getElementById('loading');
     loading.style.display = 'flex';
@@ -64,7 +80,6 @@ async function updateFloodLayer() {
     }
 
     const hourStr = String(hour).padStart(2, '0');
-    // Adjust data path to subfolders
     const url = `data/${basinId}/flood_${basinId}_hr${hourStr}.tif`;
 
     try {
@@ -104,16 +119,22 @@ async function updateFloodLayer() {
 // UI Setup
 const slider = document.getElementById('hourSlider');
 const hourDisplay = document.getElementById('hourValue');
+const regionSelect = document.getElementById('regionSelect');
 const basinSelect = document.getElementById('basinSelect');
 
-// Basin Change
+regionSelect.addEventListener('change', async (e) => {
+    updateBasinList(e.target.value);
+    config.selectedBasin = basinSelect.value;
+    await loadBasin(config.selectedBasin);
+    updateFloodLayer();
+});
+
 basinSelect.addEventListener('change', async (e) => {
     config.selectedBasin = e.target.value;
     await loadBasin(config.selectedBasin);
     updateFloodLayer();
 });
 
-// Slider Change
 slider.addEventListener('change', (e) => {
     config.currentHour = parseInt(e.target.value);
     hourDisplay.innerText = String(config.currentHour).padStart(2, '0');
@@ -124,7 +145,6 @@ slider.addEventListener('input', (e) => {
     hourDisplay.innerText = String(e.target.value).padStart(2, '0');
 });
 
-// Layer Toggles
 document.getElementById('btn-basin').addEventListener('click', function () {
     this.classList.toggle('active');
     if (this.classList.contains('active')) {
@@ -146,6 +166,8 @@ document.getElementById('btn-flood').addEventListener('click', function () {
 
 // Initial Load
 (async () => {
+    updateBasinList('부산');
+    basinSelect.value = '4120003910';
     await loadBasin(config.selectedBasin);
     updateFloodLayer();
 })();
